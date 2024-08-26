@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import Webcam from "react-webcam";
 import { load as cocoSSDLoad } from "@tensorflow-models/coco-ssd";
 import * as tf from "@tensorflow/tfjs";
@@ -10,9 +10,33 @@ let detectInterval;
 
 const ObjectDetection = () => {
     const [isLoading, setIsLoading] = useState(true);
+    const [devices, setDevices] = useState([]);
+    const [currentDeviceId, setCurrentDeviceId] = useState(null);
 
     const webcamRef = useRef(null);
     const canvasRef = useRef(null);
+
+    const handleDevices = useCallback(
+        (mediaDevices) =>
+            setDevices(
+                mediaDevices.filter(({ kind }) => kind === "videoinput")
+            ),
+        [setDevices]
+    );
+
+    useEffect(() => {
+        navigator.mediaDevices.enumerateDevices().then(handleDevices);
+    }, [handleDevices]);
+
+    const toggleCamera = () => {
+        if (devices.length > 0) {
+            const currentIndex = devices.findIndex(
+                (device) => device.deviceId === currentDeviceId
+            );
+            const nextIndex = (currentIndex + 1) % devices.length;
+            setCurrentDeviceId(devices[nextIndex].deviceId);
+        }
+    };
 
     async function runCoco() {
         setIsLoading(true); // Set loading state to true when model loading starts
@@ -30,20 +54,23 @@ const ObjectDetection = () => {
             webcamRef.current !== null &&
             webcamRef.current.video?.readyState === 4
         ) {
-            canvasRef.current.width = webcamRef.current.video.videoWidth;
-            canvasRef.current.height = webcamRef.current.video.videoHeight;
+            const videoWidth = webcamRef.current.video.videoWidth;
+            const videoHeight = webcamRef.current.video.videoHeight;
 
-            // find detected objects
-            const detectedObjects = await net.detect(
-                webcamRef.current.video,
-                undefined,
-                0.6
-            );
+            if (videoWidth && videoHeight) {
+                canvasRef.current.width = videoWidth;
+                canvasRef.current.height = videoHeight;
 
-            //   console.log(detectedObjects);
+                // find detected objects
+                const detectedObjects = await net.detect(
+                    webcamRef.current.video,
+                    undefined,
+                    0.6
+                );
 
-            const context = canvasRef.current.getContext("2d");
-            renderPredictions(detectedObjects, context);
+                const context = canvasRef.current.getContext("2d");
+                renderPredictions(detectedObjects, context);
+            }
         }
     }
 
@@ -55,8 +82,10 @@ const ObjectDetection = () => {
             const myVideoWidth = webcamRef.current.video.videoWidth;
             const myVideoHeight = webcamRef.current.video.videoHeight;
 
-            webcamRef.current.video.width = myVideoWidth;
-            webcamRef.current.video.height = myVideoHeight;
+            if (myVideoWidth && myVideoHeight) {
+                webcamRef.current.video.width = myVideoWidth;
+                webcamRef.current.video.height = myVideoHeight;
+            }
         }
     };
 
@@ -64,6 +93,12 @@ const ObjectDetection = () => {
         runCoco();
         showmyVideo();
     }, []);
+
+    useEffect(() => {
+        if (currentDeviceId) {
+            showmyVideo();
+        }
+    }, [currentDeviceId]);
 
     return (
         <div className="mt-8">
@@ -75,7 +110,12 @@ const ObjectDetection = () => {
                     <Webcam
                         ref={webcamRef}
                         className="rounded-md w-full lg:h-[720px]"
-                        muted
+                        audio={false}
+                        videoConstraints={{ deviceId: currentDeviceId }}
+                        onUserMediaError={(error) =>
+                            console.error("Webcam error:", error)
+                        }
+                        onUserMedia={() => console.log("Webcam started")}
                     />
                     {/* canvas */}
                     <canvas
@@ -84,6 +124,9 @@ const ObjectDetection = () => {
                     />
                 </div>
             )}
+            <button onClick={toggleCamera} className="btn">
+                Toggle Camera
+            </button>
         </div>
     );
 };
