@@ -5,6 +5,7 @@ import Webcam from "react-webcam";
 import { load as cocoSSDLoad } from "@tensorflow-models/coco-ssd";
 import * as tf from "@tensorflow/tfjs";
 import { renderPredictions } from "@/utils/RenderPredictions";
+import { Button } from "./ui/button";
 
 let detectInterval;
 
@@ -12,6 +13,7 @@ const ObjectDetection = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [devices, setDevices] = useState([]);
     const [currentDeviceId, setCurrentDeviceId] = useState(null);
+    const [key, setKey] = useState(0); // Add a key to force re-render
 
     const webcamRef = useRef(null);
     const canvasRef = useRef(null);
@@ -24,17 +26,31 @@ const ObjectDetection = () => {
         [setDevices]
     );
 
-    useEffect(() => {
-        navigator.mediaDevices.enumerateDevices().then(handleDevices);
-    }, [handleDevices]);
+    const getDevices = async () => {
+        const mediaDevices = await navigator.mediaDevices.enumerateDevices();
+        handleDevices(mediaDevices);
+    };
 
-    const toggleCamera = () => {
+    const stopVideoStream = () => {
+        if (webcamRef.current && webcamRef.current.stream) {
+            webcamRef.current.stream
+                .getTracks()
+                .forEach((track) => track.stop());
+        }
+    };
+
+    const toggleCamera = async () => {
         if (devices.length > 0) {
+            stopVideoStream();
             const currentIndex = devices.findIndex(
                 (device) => device.deviceId === currentDeviceId
             );
             const nextIndex = (currentIndex + 1) % devices.length;
             setCurrentDeviceId(devices[nextIndex].deviceId);
+            setKey((prevKey) => prevKey + 1); // Force re-render
+
+            // Add a delay to ensure the video stream is properly stopped before switching
+            await new Promise((resolve) => setTimeout(resolve, 500));
         }
     };
 
@@ -42,6 +58,8 @@ const ObjectDetection = () => {
         setIsLoading(true); // Set loading state to true when model loading starts
         const net = await cocoSSDLoad();
         setIsLoading(false); // Set loading state to false when model loading completes
+
+        await getDevices(); // Get devices after model is loaded
 
         detectInterval = setInterval(() => {
             runObjectDetection(net); // will build this next
@@ -91,7 +109,6 @@ const ObjectDetection = () => {
 
     useEffect(() => {
         runCoco();
-        showmyVideo();
     }, []);
 
     useEffect(() => {
@@ -108,6 +125,7 @@ const ObjectDetection = () => {
                 <div className="relative flex justify-center items-center gradient p-1.5 rounded-md">
                     {/* webcam */}
                     <Webcam
+                        key={key} // Force re-render on key change
                         ref={webcamRef}
                         className="rounded-md w-full lg:h-[720px]"
                         audio={false}
@@ -124,9 +142,11 @@ const ObjectDetection = () => {
                     />
                 </div>
             )}
-            <button onClick={toggleCamera} className="btn">
-                Toggle Camera
-            </button>
+            <div className="flex justify-center items-center w-full mt-4">
+                <Button onClick={toggleCamera} className="">
+                    Toggle Camera
+                </Button>
+            </div>
         </div>
     );
 };
