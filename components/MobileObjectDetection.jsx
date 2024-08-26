@@ -9,13 +9,7 @@ function App(props) {
         console.log("takePhoto");
     }
 
-    return (
-        <Camera
-            onTakePhoto={(dataUri) => {
-                handleTakePhoto(dataUri);
-            }}
-        />
-    );
+    return <Camera isFullscreen={true} />;
 }
 
 export default App;

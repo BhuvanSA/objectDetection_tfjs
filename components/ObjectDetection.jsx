@@ -10,23 +10,9 @@ let detectInterval;
 
 const ObjectDetection = () => {
     const [isLoading, setIsLoading] = useState(true);
-    const [hasPermission, setHasPermission] = useState(false);
 
     const webcamRef = useRef(null);
     const canvasRef = useRef(null);
-
-    async function requestCameraPermission() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: true,
-            });
-            // Stop the stream immediately after getting permission
-            stream.getTracks().forEach((track) => track.stop());
-            setHasPermission(true);
-        } catch (err) {
-            console.error("Error accessing camera:", err);
-        }
-    }
 
     async function runCoco() {
         setIsLoading(true); // Set loading state to true when model loading starts
@@ -75,15 +61,9 @@ const ObjectDetection = () => {
     };
 
     useEffect(() => {
-        if (hasPermission) {
-            runCoco();
-            showmyVideo();
-        }
-    }, [hasPermission]);
-
-    const videoConstraints = {
-        facingMode: "environment", // Use rear camera by default
-    };
+        runCoco();
+        showmyVideo();
+    }, []);
 
     return (
         <div className="mt-8">
@@ -91,35 +71,17 @@ const ObjectDetection = () => {
                 <div className="gradient-text">Loading AI Model...</div>
             ) : (
                 <div className="relative flex justify-center items-center gradient p-1.5 rounded-md">
-                    {!hasPermission ? (
-                        <button
-                            onClick={requestCameraPermission}
-                            className="btn"
-                        >
-                            Grant Camera Access
-                        </button>
-                    ) : (
-                        <>
-                            {/* webcam */}
-                            <Webcam
-                                ref={webcamRef}
-                                className="rounded-md w-full lg:h-[720px]"
-                                audio={false}
-                                videoConstraints={videoConstraints}
-                                onUserMediaError={(error) =>
-                                    console.error("Webcam error:", error)
-                                }
-                                onUserMedia={() =>
-                                    console.log("Webcam started")
-                                }
-                            />
-                            {/* canvas */}
-                            <canvas
-                                ref={canvasRef}
-                                className="absolute top-0 left-0 z-99999 w-full lg:h-[720px]"
-                            />
-                        </>
-                    )}
+                    {/* webcam */}
+                    <Webcam
+                        ref={webcamRef}
+                        className="rounded-md w-full lg:h-[720px]"
+                        muted
+                    />
+                    {/* canvas */}
+                    <canvas
+                        ref={canvasRef}
+                        className="absolute top-0 left-0 z-99999 w-full lg:h-[720px]"
+                    />
                 </div>
             )}
         </div>
