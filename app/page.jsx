@@ -1,4 +1,18 @@
 import ObjectDetection from "@/components/ObjectDetection";
+
+export const metadata = {
+    openGraph: {
+        images: [
+            {
+                url: "/open-graph.png",
+                width: 1200,
+                height: 630,
+                alt: "Object Detection using Tensorflow.js",
+            },
+        ],
+    },
+};
+
 export default function Home() {
     return (
         <main className="flex min-h-screen flex-col items-center p-8">
